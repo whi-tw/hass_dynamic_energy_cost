@@ -1,13 +1,24 @@
 import logging
-from decimal import Decimal
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
-from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.core import callback
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval, async_track_point_in_time
-from homeassistant.util.dt import now
 from datetime import timedelta
-from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR, SERVICE_RESET_COST
+from decimal import Decimal
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.core import callback
+from homeassistant.helpers.event import (
+    async_track_point_in_time,
+    async_track_state_change_event,
+)
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.util.dt import now
+
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
+
 
 class RealTimeCostSensor(SensorEntity):
     """Sensor that calculates energy cost in real-time based on power usage and electricity price."""
@@ -23,14 +34,14 @@ class RealTimeCostSensor(SensorEntity):
         _LOGGER.debug(f"Initialized Real Time Cost Sensor with price sensor: {electricity_price_sensor_id} and power sensor: {power_sensor_id}")
 
         # Extract a friendly name from the power sensor's entity ID
-        base_part = power_sensor_id.split('.')[-1]  # Assuming entity_id format like 'sensor.heat_pump_power'
-        friendly_name_parts = base_part.replace('_', ' ').split()  # Split into words
-        friendly_name_parts = [word for word in friendly_name_parts if word.lower() != 'power']  # Remove the word "Power"
-        friendly_name = ' '.join(friendly_name_parts).title()  # Rejoin and title-case
-        self._base_name = friendly_name + ' Real Time Energy Cost'
+        base_part = power_sensor_id.split(".")[-1]  # Assuming entity_id format like 'sensor.heat_pump_power'
+        friendly_name_parts = base_part.replace("_", " ").split()  # Split into words
+        friendly_name_parts = [word for word in friendly_name_parts if word.lower() != "power"]  # Remove the word "Power"
+        friendly_name = " ".join(friendly_name_parts).title()  # Rejoin and title-case
+        self._base_name = friendly_name + " Real Time Energy Cost"
 
         # Prepare a device name using the friendly base part
-        self._device_name = friendly_name + ' Dynamic Energy Cost'
+        self._device_name = friendly_name + " Dynamic Energy Cost"
 
     @property
     def unique_id(self):
@@ -43,7 +54,7 @@ class RealTimeCostSensor(SensorEntity):
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
             "name": self._device_name,
-            "manufacturer": "Custom Integration"
+            "manufacturer": "Custom Integration",
         }
 
     @property
@@ -59,23 +70,22 @@ class RealTimeCostSensor(SensorEntity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        return 'EUR/h'
-
+        return "EUR/h"
 
     @callback
     def handle_state_change(self, event):
         """Handle changes to the electricity price or power usage."""
-        entity_id = event.data['entity_id']
-        new_state = event.data.get('new_state')
+        entity_id = event.data["entity_id"]
+        new_state = event.data.get("new_state")
 
-        if new_state is None or new_state.state in ['unknown', 'unavailable']:
+        if new_state is None or new_state.state in ["unknown", "unavailable"]:
             _LOGGER.warning(f"State of {entity_id} is '{new_state.state}', skipping update.")
             return
 
         electricity_price = self.hass.states.get(self._electricity_price_sensor_id).state
         power_usage = self.hass.states.get(self._power_sensor_id).state
 
-        if not electricity_price or not power_usage or electricity_price in ['unknown', 'unavailable'] or power_usage in ['unknown', 'unavailable']:
+        if not electricity_price or not power_usage or electricity_price in ["unknown", "unavailable"] or power_usage in ["unknown", "unavailable"]:
             _LOGGER.warning("One or more sensor values are unavailable, skipping update.")
             return
 
@@ -93,21 +103,25 @@ class RealTimeCostSensor(SensorEntity):
     async def async_added_to_hass(self):
         """Register callbacks when added to hass."""
         async_track_state_change_event(
-            self.hass, [self._electricity_price_sensor_id, self._power_sensor_id], self.handle_state_change
+            self.hass,
+            [self._electricity_price_sensor_id, self._power_sensor_id],
+            self.handle_state_change,
         )
         _LOGGER.info(f"Callbacks registered for {self._electricity_price_sensor_id} and {self._power_sensor_id}")
 
+
 def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform from a config entry."""
-    electricity_price_sensor = config_entry.data.get('electricity_price_sensor')
-    power_sensor = config_entry.data.get('power_sensor')
-    real_time_cost_sensor = RealTimeCostSensor(hass, config_entry, electricity_price_sensor, power_sensor, 'Real Time Energy Cost')
+    electricity_price_sensor = config_entry.data.get("electricity_price_sensor")
+    power_sensor = config_entry.data.get("power_sensor")
+    real_time_cost_sensor = RealTimeCostSensor(hass, config_entry, electricity_price_sensor, power_sensor, "Real Time Energy Cost")
     async_add_entities([real_time_cost_sensor])
 
     # Utility Meter Sensors setup
-    intervals = ['daily', 'monthly', 'yearly']
+    intervals = ["daily", "monthly", "yearly"]
     utility_sensors = [UtilityMeterSensor(hass, real_time_cost_sensor, interval) for interval in intervals]
     async_add_entities(utility_sensors)
+
 
 class UtilityMeterSensor(SensorEntity, RestoreEntity):
     """Sensor that calculates cumulative energy costs over set intervals and resets accordingly."""
@@ -118,7 +132,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         self.hass = hass
         self._real_time_cost_sensor = real_time_cost_sensor
         self._interval = interval
-        self._state = Decimal('0.00')
+        self._state = Decimal("0.00")
         self._last_update = now()
         base_name = real_time_cost_sensor.name.replace(" Real Time Energy Cost", "").strip()
         self._name = f"{base_name} {interval.title()} Energy Cost"
@@ -128,7 +142,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         await super().async_added_to_hass()
         # Restore state if available
         last_state = await self.async_get_last_state()
-        if last_state and last_state.state not in ('unknown', 'unavailable'):
+        if last_state and last_state.state not in ("unknown", "unavailable"):
             try:
                 self._state = Decimal(last_state.state)
             except InvalidOperation:
@@ -150,7 +164,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
             next_reset = next_month.replace(hour=0, minute=0, second=0, microsecond=0)
         elif self._interval == "yearly":
             next_reset = current_time.replace(year=current_time.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        
+
         _LOGGER.debug(f"Calculated next reset time for {self._interval} reset: {next_reset}")
         return next_reset
 
@@ -167,7 +181,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         next_reset_time = self.calculate_next_reset_time()
 
         # Cancel existing scheduled reset if it exists
-        if hasattr(self, '_reset_timer'):
+        if hasattr(self, "_reset_timer"):
             self.hass.async_create_task(self.hass.async_remove_job(self._reset_timer))
 
         # Log the scheduling of the next reset
@@ -179,7 +193,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
 
     async def _reset_meter(self, _):
         """Reset the meter at the specified interval."""
-        self._state = Decimal('0.00')
+        self._state = Decimal("0.00")
         self._last_update = now()
         self.async_write_ha_state()
         self.schedule_next_reset()
@@ -188,8 +202,8 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
     @callback
     def _handle_real_time_cost_update(self, event):
         """Update cumulative cost based on the real-time cost sensor updates."""
-        new_state = event.data.get('new_state')
-        if new_state is None or new_state.state in ('unknown', 'unavailable'):
+        new_state = event.data.get("new_state")
+        if new_state is None or new_state.state in ("unknown", "unavailable"):
             _LOGGER.debug("Skipping update due to unavailable state")
             return
 
@@ -205,7 +219,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
             hours_passed = Decimal(time_difference.total_seconds()) / Decimal(3600)  # Convert time difference to hours as Decimal
             _LOGGER.debug(f"Time difference calculated as: {time_difference}, which is {hours_passed} hours.")  # Log time difference in hours
 
-            self._state += (current_cost * hours_passed).quantize(Decimal('0.01'))
+            self._state += (current_cost * hours_passed).quantize(Decimal("0.01"))
             self._last_update = now()
             self.async_write_ha_state()
             _LOGGER.debug(f"Updated state to: {self._state} using cost: {current_cost} over {hours_passed} hours")
@@ -235,7 +249,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        return 'EUR'
+        return "EUR"
 
     @property
     def device_class(self):
