@@ -1,8 +1,13 @@
 import logging
+from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant import config_entries
+from homeassistant.config_entries import (
+    CONN_CLASS_LOCAL_POLL,
+    ConfigFlow,
+    ConfigFlowResult,
+)
 from homeassistant.helpers import selector
 
 from .const import DOMAIN
@@ -10,13 +15,16 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class DynamicEnergyCostConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Dynamic Energy Cost."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
+    CONNECTION_CLASS = CONN_CLASS_LOCAL_POLL
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         _LOGGER.debug("Initiating config flow for user.")
         errors = {}
@@ -36,12 +44,12 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "energy_sensor",
                 ):
                     _LOGGER.warning("Neither power nor energy sensor was provided.")
-                    raise exceptions.Invalid(
+                    raise vol.Invalid(
                         "Please enter either a power sensor or an energy sensor, not both.",
                     )
                 if user_input.get("power_sensor") and user_input.get("energy_sensor"):
                     _LOGGER.warning("Both power and energy sensors were provided.")
-                    raise exceptions.Invalid(
+                    raise vol.Invalid(
                         "Please enter only one type of sensor (power or energy).",
                     )
 
