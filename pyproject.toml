@@ -63,7 +63,7 @@ ignore_missing_imports = true
 source = ["custom_components/dynamic_energy_cost", "utils", "tests"]
 
 [tool.ruff]
-line-length = 88
+line-length = 150
 target-version = "py312"
 exclude = ["utils/measure/playground", "utils/visualize", ".github", "docs"]
 
