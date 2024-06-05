@@ -8,6 +8,7 @@ keywords = [
   "homeassistant",
   "energy",
   "power",
+  "cost",
   "custom-component",
   "custom-integration",
 ]
@@ -59,10 +60,10 @@ module = "homeassistant.components.*"
 ignore_missing_imports = true
 
 [tool.coverage.paths]
-source = ["custom_components/powercalc", "utils", "tests"]
+source = ["custom_components/dynamic_energy_cost", "utils", "tests"]
 
 [tool.ruff]
-line-length = 150
+line-length = 88
 target-version = "py312"
 exclude = ["utils/measure/playground", "utils/visualize", ".github", "docs"]
 
@@ -80,8 +81,9 @@ max-complexity = 15
 name = "dynamic-energy-cost"
 version = "0.5.0"
 description = "Dynamic Energy Cost HA custom component"
-authors = ["martinarva@github"]
+authors = ["martinarva <77044330+martinarva@users.noreply.github.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.group.dev.dependencies]
 # pre-commit = "^3.3"
