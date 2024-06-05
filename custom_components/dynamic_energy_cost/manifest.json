@@ -1,7 +1,9 @@
 {
   "domain": "dynamic_energy_cost",
   "name": "Dynamic Energy Cost",
-  "after_dependencies": [],
+  "after_dependencies": [
+    "integration"
+  ],
   "config_flow": true,
   "version": "0.4.2",
   "requirements": [],
